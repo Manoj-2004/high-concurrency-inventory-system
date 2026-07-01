@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import User
-from app.schemas import UserCreate, UserLogin
+from fastapi.security import OAuth2PasswordRequestForm
+from app.schemas import UserCreate
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -55,10 +56,13 @@ def register_user(user_data: UserCreate, db: Session) -> User:
     return new_user
 
 
-def login_user(user_data: UserLogin, db: Session) -> dict:
-    user = db.query(User).filter(User.email == user_data.email).first()
+def login_user(
+    form_data: OAuth2PasswordRequestForm,
+    db: Session,
+) -> dict:
+    user = db.query(User).filter(User.email == form_data.username).first()
 
-    if not user or not verify_password(user_data.password, user.password_hash):
+    if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
