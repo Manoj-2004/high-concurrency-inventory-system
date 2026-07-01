@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.auth import router as auth_router
+from app.routers.auth import router as auth_router
 
 app = FastAPI(
     title="High-Concurrency Inventory System",
