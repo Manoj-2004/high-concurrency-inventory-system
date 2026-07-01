@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 
 from app.routers.auth import router as auth_router
+from app.routers.product import router as products_router
+
 
 app = FastAPI(
     title="High-Concurrency Inventory System",
@@ -9,6 +11,7 @@ app = FastAPI(
 )
 
 app.include_router(auth_router)
+app.include_router(products_router)
 
 @app.get("/")
 def root():
