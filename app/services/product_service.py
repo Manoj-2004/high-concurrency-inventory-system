@@ -25,3 +25,10 @@ def create_product(
         product_data.stock,
     )
     return new_product
+
+def get_products(db: Session):
+    return db.query(Product).all()
+
+def get_product(product_id: int, db: Session):
+    return db.query(Product).filter(Product.id == product_id).first()
+    
