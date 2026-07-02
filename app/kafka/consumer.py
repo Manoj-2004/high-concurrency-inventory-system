@@ -1,6 +1,7 @@
 import json
 
 from kafka import KafkaConsumer
+from app.logging_config import logger
 
 from app.services.kafka_purchase_service import process_purchase_event
 from app.config import settings
@@ -15,15 +16,15 @@ consumer = KafkaConsumer(
     group_id="inventory-workers",
 )
 
-print("Waiting for purchase events...\n")
+logger.info("Waiting for purchase events...")
 
 for message in consumer:
     try:
         process_purchase_event(message.value)
         consumer.commit()
-        print("Offset committed successfully")
+        logger.info("Offset committed successfully")
 
     except Exception as error:
-        print(f"Error processing message: {error}")
-        print("Offset not committed. Kafka will retry this message after restart.")
+        logger.error(f"Error processing message: {error}")
+        logger.warning("Offset not committed. Kafka will retry this message after restart.")
         break

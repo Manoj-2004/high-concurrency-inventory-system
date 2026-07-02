@@ -1,6 +1,7 @@
 from app.database import SessionLocal
 from app.models import Order, OrderItem, OrderStatus, Product
 from sqlalchemy.exc import IntegrityError
+from app.logging_config import logger
 
 def process_purchase_event(event: dict):
     db = SessionLocal()
@@ -14,7 +15,7 @@ def process_purchase_event(event: dict):
         product = db.query(Product).filter(Product.id == product_id).first()
 
         if not product:
-            print(f"Product {product_id} not found")
+            logger.warning(f"Product {product_id} not found")
             return
 
         total_amount = product.price * quantity
@@ -42,16 +43,18 @@ def process_purchase_event(event: dict):
 
         db.commit()
 
-        print(f"Order {new_order.id} created successfully")
+        logger.info(f"Order {new_order.id} created successfully")
 
     except IntegrityError:
         db.rollback()
-        print(f"Event {event.get('event_id')} already processed by DB constraint. Skipping.")
+        logger.info(
+            f"Event {event.get('event_id')} already processed by DB constraint. Skipping."
+        )
         return
 
     except Exception as error:
         db.rollback()
-        print(f"Failed to process purchase event: {error}")
+        logger.exception(f"Failed to process purchase event: {error}")
         raise
     
     finally:
