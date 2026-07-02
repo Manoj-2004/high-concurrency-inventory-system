@@ -55,7 +55,6 @@ services:
 
   consumer:
     build: .
-    container_name: inventory_consumer
     command: python -m app.kafka.consumer
     depends_on:
       - postgres
