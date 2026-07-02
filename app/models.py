@@ -53,6 +53,7 @@ class Order(Base):
     status = Column(String(20), default=OrderStatus.PENDING.value, nullable=False)
     total_amount = Column(Numeric(10, 2), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    event_id = Column(String, unique=True, nullable=True)
 
     user = relationship("User", back_populates="orders")
     items = relationship("OrderItem", back_populates="order")

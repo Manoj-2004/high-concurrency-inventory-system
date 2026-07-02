@@ -9,7 +9,10 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     use_background_tasks: bool = False
-
+    use_kafka: bool = False
+    kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_purchase_topic: str = "purchase-events"
+    
     class Config:
         env_file = ".env"
         extra = "ignore"

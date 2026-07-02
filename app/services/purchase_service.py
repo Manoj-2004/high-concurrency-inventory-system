@@ -1,12 +1,59 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from uuid import uuid4
 
 from app.models import Order, OrderItem, OrderStatus, Product, User
 from app.redis_client import redis_client
 from app.schemas import PurchaseRequest
 from app.database import SessionLocal
+from app.kafka.producer import publish_purchase_event
 
+def purchase_product_kafka(
+    purchase_data: PurchaseRequest,
+    current_user: User,
+    db: Session,
+):
+    product = (
+        db.query(Product)
+        .filter(Product.id == purchase_data.product_id)
+        .first()
+    )
 
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+
+    redis_key = f"product:{product.id}:stock"
+
+    remaining_stock = redis_client.decrby(
+        redis_key,
+        purchase_data.quantity,
+    )
+
+    if remaining_stock < 0:
+        redis_client.incrby(redis_key, purchase_data.quantity)
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Out of stock",
+        )
+
+    event = {
+        "event_id": str(uuid4()),
+        "user_id": current_user.id,
+        "product_id": product.id,
+        "quantity": purchase_data.quantity,
+    }
+
+    publish_purchase_event(event)
+
+    return {
+        "message": "Purchase accepted and queued for processing."
+    }
+            
+            
 def purchase_product(
     purchase_data: PurchaseRequest,
     current_user: User,
