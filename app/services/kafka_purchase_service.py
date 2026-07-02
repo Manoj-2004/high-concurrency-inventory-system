@@ -49,7 +49,7 @@ def process_purchase_event(event: dict):
         print(f"Event {event.get('event_id')} already processed by DB constraint. Skipping.")
         return
 
-    except:
+    except Exception as error:
         db.rollback()
         print(f"Failed to process purchase event: {error}")
         raise
