@@ -3,11 +3,12 @@ import json
 from kafka import KafkaConsumer
 
 from app.services.kafka_purchase_service import process_purchase_event
+from app.config import settings
 
 
 consumer = KafkaConsumer(
     "purchase-events",
-    bootstrap_servers="localhost:9092",
+    bootstrap_servers=settings.kafka_bootstrap_servers,
     value_deserializer=lambda value: json.loads(value.decode("utf-8")),
     auto_offset_reset="earliest",
     enable_auto_commit=False,

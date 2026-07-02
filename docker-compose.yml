@@ -31,15 +31,38 @@ services:
 
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
 
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
 
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
 
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
 
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
 
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  api:
+    build: .
+    container_name: inventory_api
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    env_file:
+      - .env
+
+  consumer:
+    build: .
+    container_name: inventory_consumer
+    command: python -m app.kafka.consumer
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    env_file:
+      - .env
 
 volumes:
   postgres_data:
