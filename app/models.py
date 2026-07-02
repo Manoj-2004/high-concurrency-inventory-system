@@ -1,4 +1,5 @@
-from enum import Enum
+from enum import Enum as PyEnum
+from sqlalchemy import Enum as SQLEnum
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
@@ -7,12 +8,12 @@ from sqlalchemy.sql import func
 from app.database import Base
 
 
-class UserRole(str, Enum):
+class UserRole(str, PyEnum):
     CUSTOMER = "CUSTOMER"
     ADMIN = "ADMIN"
 
 
-class OrderStatus(str, Enum):
+class OrderStatus(str, PyEnum):
     PENDING = "PENDING"
     CONFIRMED = "CONFIRMED"
     FAILED = "FAILED"
@@ -27,7 +28,8 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(String(20), default=UserRole.CUSTOMER.value, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
+    role = Column(SQLEnum(UserRole), nullable=False, default=UserRole.CUSTOMER)
+    
     orders = relationship("Order", back_populates="user")
 
 

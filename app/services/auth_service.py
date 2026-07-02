@@ -121,8 +121,8 @@ def login_user(
             detail="Invalid email or password",
         )
 
-    access_token = create_access_token(data={"sub": str(user.id)})
-    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
+    refresh_token = create_refresh_token(data={"sub": str(user.id), "role": user.role.value})
 
     return {
         "access_token": access_token,
