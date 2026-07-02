@@ -1,4 +1,5 @@
 import json
+import socket
 
 from kafka import KafkaConsumer
 from app.logging_config import logger
@@ -6,6 +7,8 @@ from app.logging_config import logger
 from app.services.kafka_purchase_service import process_purchase_event
 from app.config import settings
 
+
+CONSUMER_ID = socket.gethostname()
 
 consumer = KafkaConsumer(
     "purchase-events",
@@ -16,13 +19,13 @@ consumer = KafkaConsumer(
     group_id="inventory-workers",
 )
 
-logger.info("Waiting for purchase events...")
+logger.info(f"Consumer {CONSUMER_ID} waiting for purchase events...")
 
 for message in consumer:
     try:
         process_purchase_event(message.value)
         consumer.commit()
-        logger.info("Offset committed successfully")
+        logger.info(f"Consumer {CONSUMER_ID} committed offset successfully")
 
     except Exception as error:
         logger.error(f"Error processing message: {error}")

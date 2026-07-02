@@ -9,6 +9,10 @@ from app.database import get_db
 from app.models import User
 from app.schemas import UserCreate, UserLogin, UserResponse
 from app.services import auth_service
+from app.schemas import RefreshTokenRequest
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from app.services.token_service import is_token_blacklisted
+from app.schemas import RefreshTokenRequest, LogoutRequest
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -24,6 +28,12 @@ def get_current_user(
         detail="Could not validate user credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    if is_token_blacklisted(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+        )
 
     try:
         payload = jwt.decode(
@@ -62,3 +72,17 @@ def login_user(
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+@router.post("/refresh")
+def refresh_token(token_data: RefreshTokenRequest):
+    return auth_service.refresh_access_token(token_data.refresh_token)
+
+@router.post("/logout")
+def logout(
+    logout_data: LogoutRequest,
+    token: str = Depends(oauth2_scheme),
+):
+    return auth_service.logout_user(
+        access_token=token,
+        refresh_token=logout_data.refresh_token,
+    )

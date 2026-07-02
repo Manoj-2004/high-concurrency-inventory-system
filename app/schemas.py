@@ -15,6 +15,8 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class LogoutRequest(BaseModel):
+    refresh_token: str
 
 class UserResponse(BaseModel):
     id: int
@@ -26,6 +28,8 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 class ProductCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=150)
