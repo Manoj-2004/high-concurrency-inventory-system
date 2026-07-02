@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     use_kafka: bool = False
     kafka_bootstrap_servers: str = "localhost:9092"
     kafka_purchase_topic: str = "purchase-events"
-    
+    DLQ_topic = "purchase-events-dlq"
     class Config:
         env_file = ".env"
         extra = "ignore"

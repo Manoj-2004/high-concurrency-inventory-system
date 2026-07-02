@@ -2,6 +2,7 @@ from app.database import SessionLocal
 from app.models import Order, OrderItem, OrderStatus, Product
 from sqlalchemy.exc import IntegrityError
 from app.logging_config import logger
+from app.kafka.producer import publish_dlq_event
 
 def process_purchase_event(event: dict):
     db = SessionLocal()
@@ -15,7 +16,14 @@ def process_purchase_event(event: dict):
         product = db.query(Product).filter(Product.id == product_id).first()
 
         if not product:
-            logger.warning(f"Product {product_id} not found")
+            logger.warning(f"Product {product_id} not found. Sending to DLQ.")
+
+            publish_dlq_event({
+                "original_event": event,
+                "error": f"Product {product_id} not found",
+                "reason": "NON_RETRYABLE",
+            })
+
             return
 
         total_amount = product.price * quantity
