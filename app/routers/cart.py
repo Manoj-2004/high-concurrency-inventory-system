@@ -8,6 +8,7 @@ from app.schemas import (
     CartItemCreate,
     CartItemResponse,
     CartResponse,
+    CheckoutRequest
 )
 from app.services import cart_service
 
@@ -72,7 +73,8 @@ def clear_cart(
     
 @router.post("/checkout")
 def checkout_cart(
+    checkout_data: CheckoutRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return cart_service.checkout_cart(current_user, db)
+    return cart_service.checkout_cart(checkout_data, current_user, db)

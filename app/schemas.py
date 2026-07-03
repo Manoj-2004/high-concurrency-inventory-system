@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import List
 
 from pydantic import BaseModel, EmailStr, Field
-
+from app.models import OrderStatus
 
 class UserCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
@@ -69,11 +69,20 @@ class OrderItemResponse(BaseModel):
 
 class OrderResponse(BaseModel):
     id: int
-    user_id: int
     status: str
     total_amount: Decimal
     created_at: datetime
-    items: List[OrderItemResponse] = []
+
+    shipping_full_name: str | None
+    shipping_phone: str | None
+    shipping_address_line_1: str | None
+    shipping_address_line_2: str | None
+    shipping_city: str | None
+    shipping_state: str | None
+    shipping_postal_code: str | None
+    shipping_country: str | None
+
+    items: list[OrderItemResponse]
 
     class Config:
         from_attributes = True
@@ -123,3 +132,9 @@ class AddressUpdate(BaseModel):
     postal_code: str | None = None
     country: str | None = None
     is_default: bool | None = None
+    
+class CheckoutRequest(BaseModel):
+    address_id: int = Field(..., gt=0)
+    
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatus

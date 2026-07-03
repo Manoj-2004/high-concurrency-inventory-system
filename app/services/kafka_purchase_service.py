@@ -1,5 +1,5 @@
 from app.database import SessionLocal
-from app.models import Order, OrderItem, OrderStatus, Product, CartItem
+from app.models import Order, OrderItem, OrderStatus, Product, CartItem, Address
 from sqlalchemy.exc import IntegrityError
 from app.logging_config import logger
 from app.kafka.producer import publish_dlq_event
@@ -11,7 +11,24 @@ def process_purchase_event(event: dict):
         event_id = event["event_id"]
         user_id = event["user_id"]
         items = event["items"]
+        address_id = event["address_id"]
+        
+        address = (
+            db.query(Address)
+            .filter(Address.id == address_id, Address.user_id == user_id)
+            .first()
+        )
 
+        if not address:
+            logger.warning(f"Address {address_id} not found. Sending to DLQ.")
+            publish_dlq_event({
+                "original_event": event,
+                "error": f"Address {address_id} not found",
+                "reason": "NON_RETRYABLE",
+            })
+            return
+        
+        
         products_to_order = []
         total_amount = 0
 
@@ -47,6 +64,14 @@ def process_purchase_event(event: dict):
             user_id=user_id,
             status=OrderStatus.CONFIRMED.value,
             total_amount=total_amount,
+            shipping_full_name=address.full_name,
+            shipping_phone=address.phone,
+            shipping_address_line_1=address.address_line_1,
+            shipping_address_line_2=address.address_line_2,
+            shipping_city=address.city,
+            shipping_state=address.state,
+            shipping_postal_code=address.postal_code,
+            shipping_country=address.country,
         )
 
         db.add(new_order)

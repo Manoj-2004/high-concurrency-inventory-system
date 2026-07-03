@@ -1,11 +1,12 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models import CartItem, Product, User
-from app.schemas import CartItemCreate
+from app.models import CartItem, Product, User, Address, PaymentStatus, Payment
+from app.schemas import CartItemCreate, CheckoutRequest
 
 from uuid import uuid4
 from app.kafka.producer import publish_purchase_event
+
 
 def add_to_cart(cart_data: CartItemCreate, current_user: User, db: Session):
     product = db.query(Product).filter(Product.id == cart_data.product_id).first()
@@ -92,7 +93,7 @@ def clear_cart(current_user: User, db: Session):
 
     return {"message": "Cart cleared successfully"}
 
-def checkout_cart(current_user: User, db: Session):
+def checkout_cart(checkout_data: CheckoutRequest, current_user: User, db: Session):
     cart_items = (
         db.query(CartItem)
         .filter(CartItem.user_id == current_user.id)
@@ -104,24 +105,48 @@ def checkout_cart(current_user: User, db: Session):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cart is empty",
         )
+        
+    address = (
+        db.query(Address)
+        .filter(
+            Address.id == checkout_data.address_id,
+            Address.user_id == current_user.id,
+        )
+        .first()
+    )
 
-    event = {
-        "event_id": str(uuid4()),
-        "user_id": current_user.id,
-        "items": [
-            {
-                "product_id": item.product_id,
-                "quantity": item.quantity,
-            }
-            for item in cart_items
-        ],
-    }
+    if not address:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Address not found",
+        )
 
-    publish_purchase_event(event, event["items"][0]["product_id"])
+    total_amount = 0
 
-    db.query(CartItem).filter(CartItem.user_id == current_user.id).delete()
+    for cart_item in cart_items:
+        product = (
+            db.query(Product)
+            .filter(Product.id == cart_item.product_id)
+            .first()
+        )
 
+        total_amount += product.price * cart_item.quantity
+    
+    event_id = str(uuid4())
+    payment = Payment(
+        event_id=event_id,
+        user_id=current_user.id,
+        amount=total_amount,
+        status=PaymentStatus.PENDING,
+        address_id=address.id,
+    )
+    db.add(payment)
+    db.commit()
+    db.refresh(payment)
+    
     return {
-        "message": "Checkout request accepted",
-        "event_id": event["event_id"],
+        "payment_id": payment.id,
+        "event_id": payment.event_id,
+        "amount": payment.amount,
+        "status": payment.status,
     }

@@ -16,6 +16,15 @@ class UserRole(str, PyEnum):
 class OrderStatus(str, PyEnum):
     PENDING = "PENDING"
     CONFIRMED = "CONFIRMED"
+    PACKED = "PACKED"
+    SHIPPED = "SHIPPED"
+    OUT_FOR_DELIVERY = "OUT_FOR_DELIVERY"
+    DELIVERED = "DELIVERED"
+    CANCELLED = "CANCELLED"
+    
+class PaymentStatus(str, PyEnum):
+    PENDING = "PENDING"
+    SUCCESS = "SUCCESS"
     FAILED = "FAILED"
 
 
@@ -56,6 +65,14 @@ class Order(Base):
     total_amount = Column(Numeric(10, 2), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     event_id = Column(String, unique=True, nullable=True)
+    shipping_full_name = Column(String(100), nullable=True)
+    shipping_phone = Column(String(15), nullable=True)
+    shipping_address_line_1 = Column(String(255), nullable=True)
+    shipping_address_line_2 = Column(String(255), nullable=True)
+    shipping_city = Column(String(100), nullable=True)
+    shipping_state = Column(String(100), nullable=True)
+    shipping_postal_code = Column(String(20), nullable=True)
+    shipping_country = Column(String(100), nullable=True)
 
     user = relationship("User", back_populates="orders")
     items = relationship("OrderItem", back_populates="order")
@@ -133,4 +150,45 @@ class Address(Base):
         server_default=func.now(),
     )
 
+    user = relationship("User")
+    
+class Payment(Base):
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True)
+
+    event_id = Column(String(36), unique=True, nullable=False)
+
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+
+    amount = Column(Numeric(10, 2), nullable=False)
+
+    status = Column(
+        SQLEnum(PaymentStatus),
+        nullable=False,
+        default=PaymentStatus.PENDING,
+    )
+
+    gateway_transaction_id = Column(
+        String(255),
+        nullable=True,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+    address_id = Column(
+        Integer,
+        ForeignKey("addresses.id"),
+        nullable=False,
+    )
+
+    address = relationship("Address")
+    
     user = relationship("User")
