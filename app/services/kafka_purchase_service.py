@@ -1,5 +1,5 @@
 from app.database import SessionLocal
-from app.models import Order, OrderItem, OrderStatus, Product
+from app.models import Order, OrderItem, OrderStatus, Product, CartItem
 from sqlalchemy.exc import IntegrityError
 from app.logging_config import logger
 from app.kafka.producer import publish_dlq_event
@@ -10,23 +10,37 @@ def process_purchase_event(event: dict):
     try:
         event_id = event["event_id"]
         user_id = event["user_id"]
-        product_id = event["product_id"]
-        quantity = event["quantity"]
+        items = event["items"]
 
-        product = db.query(Product).filter(Product.id == product_id).first()
+        products_to_order = []
+        total_amount = 0
 
-        if not product:
-            logger.warning(f"Product {product_id} not found. Sending to DLQ.")
+        for item in items:
+            product_id = item["product_id"]
+            quantity = item["quantity"]
 
-            publish_dlq_event({
-                "original_event": event,
-                "error": f"Product {product_id} not found",
-                "reason": "NON_RETRYABLE",
-            })
+            product = db.query(Product).filter(Product.id == product_id).first()
 
-            return
+            if not product:
+                logger.warning(f"Product {product_id} not found. Sending to DLQ.")
+                publish_dlq_event({
+                    "original_event": event,
+                    "error": f"Product {product_id} not found",
+                    "reason": "NON_RETRYABLE",
+                })
+                return
 
-        total_amount = product.price * quantity
+            if product.stock < quantity:
+                logger.warning(f"Insufficient stock for product {product_id}. Sending to DLQ.")
+                publish_dlq_event({
+                    "original_event": event,
+                    "error": f"Insufficient stock for product {product_id}",
+                    "reason": "NON_RETRYABLE",
+                })
+                return
+
+            products_to_order.append((product, quantity))
+            total_amount += product.price * quantity
 
         new_order = Order(
             event_id=event_id,
@@ -38,20 +52,21 @@ def process_purchase_event(event: dict):
         db.add(new_order)
         db.flush()
 
-        order_item = OrderItem(
-            order_id=new_order.id,
-            product_id=product.id,
-            quantity=quantity,
-            price=product.price,
-        )
+        for product, quantity in products_to_order:
+            order_item = OrderItem(
+                order_id=new_order.id,
+                product_id=product.id,
+                quantity=quantity,
+                price=product.price,
+            )
 
-        db.add(order_item)
+            db.add(order_item)
+            product.stock = product.stock - quantity
 
-        product.stock = product.stock - quantity
-
+        db.query(CartItem).filter(CartItem.user_id == user_id).delete()
         db.commit()
 
-        logger.info(f"Order {new_order.id} created successfully")
+        logger.info(f"Order {new_order.id} created successfully with {len(items)} items")
 
     except IntegrityError:
         db.rollback()
@@ -64,6 +79,6 @@ def process_purchase_event(event: dict):
         db.rollback()
         logger.exception(f"Failed to process purchase event: {error}")
         raise
-    
+
     finally:
         db.close()

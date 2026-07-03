@@ -77,3 +77,19 @@ class OrderResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class CartItemCreate(BaseModel):
+    product_id: int = Field(..., gt=0)
+    quantity: int = Field(default=1, gt=0)
+
+class CartItemResponse(BaseModel):
+    id: int
+    product_id: int
+    quantity: int
+
+    class Config:
+        from_attributes = True
+
+
+class CartResponse(BaseModel):
+    items: list[CartItemResponse]

@@ -10,14 +10,14 @@ producer = KafkaProducer(
     key_serializer=lambda key: str(key).encode("utf-8"),
 )
 
-def publish_purchase_event(event: dict):
+def publish_purchase_event(event: dict, key: int):
     producer.send(
         settings.kafka_purchase_topic,
-        key=event["product_id"],
+        key=key,
         value=event,
     )
     producer.flush()
-    
+
 def publish_dlq_event(event: dict):
     producer.send(settings.dlq_topic, event)
     producer.flush()

@@ -47,7 +47,7 @@ def purchase_product_kafka(
         "quantity": purchase_data.quantity,
     }
 
-    publish_purchase_event(event)
+    publish_purchase_event(event, key=event["product_id"])
 
     return {
         "message": "Purchase accepted and queued for processing."
