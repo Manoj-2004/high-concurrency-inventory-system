@@ -1,147 +1,213 @@
-# 🚀 High-Concurrency Inventory Management System (V1)
+# 🚀 High Concurrency Inventory System
 
-A production-inspired backend system built with **FastAPI**, **PostgreSQL**, and **Redis** to simulate high-concurrency inventory management for e-commerce platforms.
+> A production-inspired backend for an e-commerce inventory management system built with **FastAPI**, **PostgreSQL**, **Redis**, and **Apache Kafka**.
 
-The project demonstrates how Redis atomic operations prevent overselling during flash-sale scenarios while maintaining consistency with PostgreSQL.
+![Python](https://img.shields.io/badge/Python-3.12-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
+![Redis](https://img.shields.io/badge/Redis-7-red)
+![Kafka](https://img.shields.io/badge/Apache-Kafka-black)
+![Docker](https://img.shields.io/badge/Docker-Compose-blue)
 
 ---
 
-# 📌 Project Overview
+## 📖 Overview
 
-Modern e-commerce platforms such as Amazon, Flipkart, and Shopify face thousands of simultaneous purchase requests during flash sales.
+This project demonstrates how modern e-commerce platforms handle authentication, shopping carts, inventory synchronization, payments, asynchronous order processing, and role-based administration.
 
-This project implements a scalable backend architecture capable of handling concurrent purchase requests by using:
+Unlike a traditional CRUD application, this backend incorporates:
 
-- Redis for atomic inventory reservation
-- PostgreSQL as the source of truth
-- JWT Authentication
-- Dockerized services
-- Configurable synchronous and asynchronous order processing
+- Event-driven architecture using Kafka
+- Redis-backed inventory caching
+- JWT authentication with refresh tokens
+- Redis token blacklisting (logout)
+- Role-based access control (RBAC)
+- Shopping cart & checkout flow
+- Payment lifecycle
+- Multi-item order processing
+- Dead Letter Queue (DLQ)
+- Shipping address snapshotting
+
+The project is designed with scalability and production-style backend practices in mind.
 
 ---
 
 # 🏗 Architecture
 
 ```
-                    Client
-                       │
-                       ▼
-                 FastAPI API
-                       │
-        ┌──────────────┴──────────────┐
-        │                             │
- Authentication                  Product APIs
-        │                             │
-        ▼                             ▼
-      JWT                    Purchase Service
-                                      │
-                                      ▼
-                          Redis Atomic DECRBY
-                                      │
-                          Stock Available?
-                             │            │
-                            Yes          No
-                             │            │
-                             ▼            ▼
-                 Sync / Background Task   400
-                             │
-                             ▼
-                        PostgreSQL
+                Client
+                   │
+                   ▼
+             FastAPI Backend
+                   │
+     ┌─────────────┴──────────────┐
+     │                            │
+ PostgreSQL                  Redis Cache
+     │                            │
+     │                            │
+     └─────────────┬──────────────┘
+                   │
+              Kafka Producer
+                   │
+            purchase-events
+                   │
+            Kafka Consumer
+                   │
+        Order Processing Service
 ```
 
 ---
 
 # ✨ Features
 
-## Authentication
+## 🔐 Authentication
 
 - User Registration
-- JWT Authentication
-- OAuth2 Password Flow
-- Swagger Authorize Integration
-- Protected Routes
+- User Login
+- JWT Access Token
+- Refresh Token
+- Secure Logout
+- Redis Token Blacklisting
 
 ---
 
-## Product Management
+## 👥 Authorization
 
-- Create Products
+Role Based Access Control
+
+### Customer
+
+- Browse Products
+- Manage Cart
+- Manage Addresses
+- Checkout
+- View Orders
+
+### Admin
+
+- Product Management
+- Inventory Sync
+- View All Orders
+- Update Order Status
+
+---
+
+## 📦 Product Management
+
+- Create Product
 - View Products
-- View Individual Product
+- Update Product
+- Delete Product
 
 ---
 
-## Purchase System
+## 🛒 Shopping Cart
 
-- Redis Atomic Stock Reservation
-- Order Creation
-- Order Items
-- Automatic Rollback on Failure
-- Configurable Purchase Mode
+- Add Product
+- Update Quantity
+- Remove Product
+- Multi-item Checkout
 
-```env
-USE_BACKGROUND_TASKS=true
+---
+
+## 🏠 Address Management
+
+- Add Address
+- Update Address
+- Delete Address
+- Multiple Addresses
+- Default Address Support
+- Shipping Address Snapshot
+
+---
+
+## 💳 Payment Workflow
+
 ```
-
-or
-
-```env
-USE_BACKGROUND_TASKS=false
+Checkout
+      │
+      ▼
+Payment (PENDING)
+      │
+      ▼
+Payment Success
+      │
+      ▼
+Kafka Event
+      │
+      ▼
+Order Creation
 ```
 
 ---
 
-## Stress Testing
+## 📬 Event Driven Order Processing
 
-A custom asyncio + httpx based stress testing script simulates concurrent users purchasing the same product.
+After successful payment:
 
-Example:
+- Kafka Producer publishes event
+- Kafka Consumer processes order
+- Inventory updated
+- Cart cleared
+- Order created
+- Order Items created
 
-```
-Stock = 25
+---
 
-Concurrent Requests = 100
+## 📦 Inventory
 
-Result
+### PostgreSQL
 
-25 Successful Orders
-75 Out of Stock
-0 Overselling
-```
+Permanent inventory storage
+
+### Redis
+
+High-speed inventory cache
+
+Admin endpoint available to synchronize Redis with PostgreSQL.
+
+---
+
+## ☠ Dead Letter Queue (DLQ)
+
+Invalid purchase events are automatically redirected to a DLQ.
+
+Examples:
+
+- Product not found
+- Insufficient stock
+- Invalid payload
+
+---
+
+## 📜 Order Management
+
+Customers can
+
+- View Order History
+- View Order Details
+
+Admins can
+
+- View All Orders
+- Update Order Status
 
 ---
 
 # 🛠 Tech Stack
 
-Backend
-
-- FastAPI
-- SQLAlchemy
-- Pydantic
-- Alembic
-
-Database
-
-- PostgreSQL
-
-Caching
-
-- Redis
-
-Authentication
-
-- JWT
-- OAuth2
-
-Testing
-
-- httpx
-- asyncio
-
-Containerization
-
-- Docker
-- Docker Compose
+| Category | Technology |
+|-----------|------------|
+| Backend | FastAPI |
+| Language | Python 3.12 |
+| Database | PostgreSQL |
+| Cache | Redis |
+| Messaging | Apache Kafka |
+| ORM | SQLAlchemy |
+| Migration | Alembic |
+| Validation | Pydantic |
+| Authentication | JWT |
+| Containerization | Docker |
 
 ---
 
@@ -151,56 +217,54 @@ Containerization
 app
 │
 ├── routers
-│   ├── auth.py
-│   ├── product.py
-│   └── purchase.py
-│
 ├── services
-│   ├── auth_service.py
-│   ├── product_service.py
-│   └── purchase_service.py
+├── kafka
+├── dependencies
+├── models
+├── schemas
+├── database
+├── config
+├── logging
 │
-├── models.py
-├── schemas.py
-├── database.py
-├── redis_client.py
-├── config.py
-└── main.py
-
-tests
-└── stress_test.py
+alembic
+docker-compose.yml
+requirements.txt
 ```
 
 ---
 
-# 🔄 Purchase Flow
+# 🔄 Checkout Flow
 
 ```
-User
-
-↓
-
 Login
 
 ↓
 
-JWT Token
+Add Products
 
 ↓
 
-Purchase API
+Add Address
 
 ↓
 
-Redis Atomic DECRBY
+Checkout
 
 ↓
 
-Stock Available?
+Payment Created
 
 ↓
 
-Yes
+Payment Success
+
+↓
+
+Kafka Producer
+
+↓
+
+Kafka Consumer
 
 ↓
 
@@ -208,161 +272,157 @@ Create Order
 
 ↓
 
-Update PostgreSQL
+Reduce Stock
 
 ↓
 
-Return Response
+Clear Cart
 ```
 
 ---
 
-# 🚦 Stress Test Results
-
-Example run:
+# 🔑 Authentication Flow
 
 ```
-Stock = 25
+Register
 
-Concurrent Requests = 100
+↓
 
-Successful Orders : 25
+Login
 
-Out of Stock : 75
+↓
 
-Overselling : 0
+Access Token
+
+↓
+
+Refresh Token
+
+↓
+
+Logout
+
+↓
+
+Redis Blacklist
 ```
-
-Redis successfully prevented overselling under concurrent purchase requests.
 
 ---
 
-# ⚠ Current Limitation (V1)
+# 🚀 Getting Started
 
-The project supports an optional **Background Task** mode.
-
-```
-Redis
-
-↓
-
-Response
-
-↓
-
-Background Task
-
-↓
-
-PostgreSQL
-```
-
-This improves API response time but **is not durable**.
-
-If the application stops before all background tasks complete, PostgreSQL may become temporarily inconsistent with Redis.
-
-This limitation motivates the V2 architecture.
-
----
-
-# 🚀 Planned V2
-
-Version 2 replaces FastAPI BackgroundTasks with a durable event-driven architecture.
-
-```
-Redis
-
-↓
-
-Kafka
-
-↓
-
-Consumer Workers
-
-↓
-
-PostgreSQL
-```
-
-Planned additions:
-
-- Apache Kafka
-- Retry Mechanism
-- Dead Letter Queue
-- Worker Consumers
-- Event-driven Processing
-- Inventory Recovery
-- Inventory API
-- Role-Based Authorization (RBAC)
-- Refresh Tokens
-- WebSockets
-
----
-
-# 🧠 Concepts Demonstrated
-
-- High-Concurrency Inventory Management
-- Redis Atomic Operations
-- PostgreSQL Transactions
-- JWT Authentication
-- OAuth2 Password Flow
-- Dependency Injection
-- SQLAlchemy ORM
-- Service Layer Architecture
-- Background Processing
-- Dockerized Development
-- Stress Testing
-- Flash Sale System Design
-
----
-
-# ▶ Running the Project
-
-Clone
+## Clone Repository
 
 ```bash
 git clone https://github.com/<your-username>/high-concurrency-inventory-system.git
+
 cd high-concurrency-inventory-system
 ```
 
-Start services
+---
+
+## Start with Docker
 
 ```bash
-docker compose up -d
+docker compose up --build
 ```
 
-Run FastAPI
+---
+
+## Run Alembic
 
 ```bash
-uvicorn app.main:app --reload
+alembic upgrade head
 ```
 
-Swagger
+---
+
+## API Documentation
+
+Swagger UI
 
 ```
-http://127.0.0.1:8000/docs
+http://localhost:8000/docs
 ```
 
-Run Stress Test
+ReDoc
 
-```bash
-python tests/stress_test.py
+```
+http://localhost:8000/redoc
+```
+
+---
+
+# 📌 Main APIs
+
+Authentication
+
+```
+POST /auth/register
+POST /auth/login
+POST /auth/refresh
+POST /auth/logout
+```
+
+Products
+
+```
+GET /products
+POST /products
+PUT /products/{id}
+DELETE /products/{id}
+```
+
+Cart
+
+```
+POST /cart
+GET /cart
+POST /cart/checkout
+```
+
+Addresses
+
+```
+GET /addresses
+POST /addresses
+PUT /addresses/{id}
+DELETE /addresses/{id}
+```
+
+Payments
+
+```
+POST /payments/{id}/success
+POST /payments/{id}/failed
+```
+
+Orders
+
+```
+GET /orders
+GET /orders/{id}
+```
+
+Admin
+
+```
+GET /admin/orders
+PATCH /admin/orders/{id}/status
 ```
 
 ---
 
 # 📈 Future Improvements
 
-- Kafka Event Streaming
-- RabbitMQ Alternative
+- Stripe / Razorpay Integration
+- WebSocket Notifications
+- Prometheus Monitoring
+- Grafana Dashboards
+- GitHub Actions CI/CD
 - Kubernetes Deployment
-- Prometheus Metrics
-- Grafana Dashboard
-- Distributed Locking
-- Inventory Reconciliation Jobs
-- CI/CD Pipeline
-- Unit & Integration Tests
+- Distributed Rate Limiting
+- Email Notifications
 
 ---
 
@@ -370,4 +430,14 @@ python tests/stress_test.py
 
 **Vajrapu Manoj Kalyan**
 
-Built as a backend systems engineering project to explore high-concurrency architecture using FastAPI, Redis, and PostgreSQL.
+B.Tech Computer Science & Engineering
+
+Python Backend Developer
+
+GitHub: https://github.com/<your-github>
+
+LinkedIn: https://linkedin.com/in/<your-linkedin>
+
+---
+
+## ⭐ If you found this project useful, consider giving it a star.
