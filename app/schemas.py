@@ -93,3 +93,33 @@ class CartItemResponse(BaseModel):
 
 class CartResponse(BaseModel):
     items: list[CartItemResponse]
+    
+    
+class AddressCreate(BaseModel):
+    full_name: str
+    phone: str
+    address_line_1: str
+    address_line_2: str | None = None
+    city: str
+    state: str
+    postal_code: str
+    country: str = "India"
+    is_default: bool = False
+
+
+class AddressResponse(AddressCreate):
+    id: int
+
+    class Config:
+        from_attributes = True
+        
+class AddressUpdate(BaseModel):
+    full_name: str | None = None
+    phone: str | None = None
+    address_line_1: str | None = None
+    address_line_2: str | None = None
+    city: str | None = None
+    state: str | None = None
+    postal_code: str | None = None
+    country: str | None = None
+    is_default: bool | None = None
